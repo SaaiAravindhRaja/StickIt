@@ -569,7 +569,12 @@ class UIController {
         // Attach mousedown event to the note element
         noteElement.addEventListener('mousedown', handleMouseDown);
 
-        // Touch events for mobile support
+        // Enhanced touch events for mobile support
+        let touchStartTime = 0;
+        let touchStartPos = { x: 0, y: 0 };
+        let isLongPress = false;
+        let longPressTimer = null;
+
         const handleTouchStart = (e) => {
             if (e.target.matches('input, textarea, button, .resize-handle')) {
                 return;
@@ -581,6 +586,20 @@ class UIController {
             }
 
             const touch = e.touches[0];
+            touchStartTime = Date.now();
+            touchStartPos = { x: touch.clientX, y: touch.clientY };
+            isLongPress = false;
+
+            // Set up long press detection for context menu (color picker)
+            longPressTimer = setTimeout(() => {
+                isLongPress = true;
+                // Trigger haptic feedback if available
+                if (navigator.vibrate) {
+                    navigator.vibrate(50);
+                }
+                this.showColorPicker(noteElement, note);
+            }, 500);
+
             const mouseEvent = new MouseEvent('mousedown', {
                 clientX: touch.clientX,
                 clientY: touch.clientY
@@ -590,9 +609,20 @@ class UIController {
         };
 
         const handleTouchMove = (e) => {
+            const touch = e.touches[0];
+            const moveDistance = Math.sqrt(
+                Math.pow(touch.clientX - touchStartPos.x, 2) + 
+                Math.pow(touch.clientY - touchStartPos.y, 2)
+            );
+
+            // Cancel long press if user moves finger too much
+            if (moveDistance > 10 && longPressTimer) {
+                clearTimeout(longPressTimer);
+                longPressTimer = null;
+            }
+
             if (!isDragging) return;
             
-            const touch = e.touches[0];
             const mouseEvent = new MouseEvent('mousemove', {
                 clientX: touch.clientX,
                 clientY: touch.clientY
@@ -602,6 +632,30 @@ class UIController {
         };
 
         const handleTouchEnd = (e) => {
+            // Clear long press timer
+            if (longPressTimer) {
+                clearTimeout(longPressTimer);
+                longPressTimer = null;
+            }
+
+            // Handle double tap for edit mode
+            const touchEndTime = Date.now();
+            const touchDuration = touchEndTime - touchStartTime;
+            
+            if (!isDragging && !isLongPress && touchDuration < 300) {
+                // Check for double tap
+                const now = Date.now();
+                const lastTap = noteElement.dataset.lastTap || 0;
+                const timeBetweenTaps = now - lastTap;
+                
+                if (timeBetweenTaps < 500 && timeBetweenTaps > 50) {
+                    // Double tap detected - enter edit mode
+                    this.enterEditMode(noteElement, note);
+                } else {
+                    noteElement.dataset.lastTap = now;
+                }
+            }
+
             if (!isDragging) return;
             
             const mouseEvent = new MouseEvent('mouseup', {});
@@ -943,6 +997,7 @@ class StickItApp {
     constructor() {
         this.noteManager = new NoteManager();
         this.uiController = new UIController(this.noteManager);
+        this.searchManager = new SearchManager(this.noteManager, this.uiController);
         this.init();
     }
 
