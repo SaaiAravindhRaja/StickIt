@@ -173,6 +173,7 @@ class UIController {
         const titleInput = noteElement.querySelector('.note-title');
         const contentTextarea = noteElement.querySelector('.note-content');
         const deleteBtn = noteElement.querySelector('.delete-btn');
+        const colorBtn = noteElement.querySelector('.color-btn');
 
         // Title input events
         titleInput.addEventListener('blur', () => {
@@ -204,7 +205,7 @@ class UIController {
         // Double-click to enter edit mode
         noteElement.addEventListener('dblclick', (e) => {
             // Don't trigger edit mode if double-clicking on controls
-            if (e.target.matches('.delete-btn, .color-btn')) {
+            if (e.target.matches('.delete-btn, .color-btn, .resize-handle')) {
                 return;
             }
             e.stopPropagation();
@@ -217,8 +218,23 @@ class UIController {
             this.deleteNoteWithConfirmation(note.id);
         });
 
+        // Color button event
+        colorBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            this.showColorPicker(noteElement, note);
+        });
+
+        // Right-click context menu for color picker
+        noteElement.addEventListener('contextmenu', (e) => {
+            e.preventDefault();
+            this.showColorPicker(noteElement, note);
+        });
+
         // Drag and drop functionality
         this.attachDragEventListeners(noteElement, note);
+        
+        // Resize functionality
+        this.attachResizeEventListeners(noteElement, note);
     }
 
     renderAllNotes() {
