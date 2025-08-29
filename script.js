@@ -1021,12 +1021,29 @@ class StickItApp {
             });
         }
 
-        // Search box (placeholder for future implementation)
+        // Search box functionality
         const searchBox = document.querySelector('.search-box');
         if (searchBox) {
-            searchBox.addEventListener('input', () => {
-                console.log('Search functionality will be implemented in task 6');
+            searchBox.addEventListener('input', (e) => {
+                const query = e.target.value;
+                if (query.trim()) {
+                    this.searchManager.searchNotes(query);
+                } else {
+                    this.searchManager.clearSearch();
+                }
             });
+
+            // Clear search on Escape key
+            searchBox.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape') {
+                    e.target.value = '';
+                    this.searchManager.clearSearch();
+                    e.target.blur();
+                }
+            });
+
+            // Add search icon and clear button functionality
+            this.enhanceSearchBox(searchBox);
         }
 
         // Notes board click for creating notes at click position
