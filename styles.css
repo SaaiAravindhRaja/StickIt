@@ -244,6 +244,58 @@ body {
     opacity: 1;
 }
 
+.note.resizing {
+    transition: none;
+    box-shadow: 0 0 0 2px #667eea, 0 8px 25px rgba(0, 0, 0, 0.3);
+}
+
+/* Color picker */
+.color-picker {
+    position: absolute;
+    background: white;
+    border-radius: 8px;
+    padding: 0.5rem;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.3rem;
+    width: 120px;
+    z-index: 1001;
+    border: 1px solid #e0e0e0;
+}
+
+.color-option {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    cursor: pointer;
+    border: 2px solid transparent;
+    transition: all 0.2s ease;
+    position: relative;
+}
+
+.color-option:hover {
+    transform: scale(1.1);
+    border-color: #333;
+}
+
+.color-option.selected {
+    border-color: #667eea;
+    box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.3);
+}
+
+.color-option.selected::after {
+    content: '✓';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: #333;
+    font-size: 12px;
+    font-weight: bold;
+    text-shadow: 0 0 2px rgba(255, 255, 255, 0.8);
+}
+
 /* Note color variations */
 .note.yellow { background: #ffeb3b; }
 .note.pink { background: #ff9ff3; }
