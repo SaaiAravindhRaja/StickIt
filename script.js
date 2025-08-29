@@ -606,6 +606,10 @@ class UIController {
         // Update DOM element
         noteElement.style.backgroundColor = color;
         
+        // Update color button to reflect current color
+        const colorBtn = noteElement.querySelector('.color-btn');
+        colorBtn.style.background = color;
+        
         // Save to storage
         this.noteManager.updateNote(note.id, { color: color });
     }
