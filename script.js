@@ -372,12 +372,12 @@ class UIController {
 
         // Touch events for mobile support
         const handleTouchStart = (e) => {
-            if (e.target.matches('input, textarea, button')) {
+            if (e.target.matches('input, textarea, button, .resize-handle')) {
                 return;
             }
             
-            // Don't start drag if note is in edit mode
-            if (noteElement.classList.contains('editing')) {
+            // Don't start drag if note is in edit mode or being resized
+            if (noteElement.classList.contains('editing') || noteElement.classList.contains('resizing')) {
                 return;
             }
 
