@@ -420,6 +420,23 @@ class UIController {
             this.enterEditMode(noteElement, note);
         });
 
+        // Single click on title or content to enter edit mode (more intuitive)
+        titleInput.addEventListener('click', (e) => {
+            if (titleInput.readOnly) {
+                e.preventDefault();
+                e.stopPropagation();
+                this.enterEditMode(noteElement, note);
+            }
+        });
+
+        contentTextarea.addEventListener('click', (e) => {
+            if (contentTextarea.readOnly) {
+                e.preventDefault();
+                e.stopPropagation();
+                this.enterEditMode(noteElement, note);
+            }
+        });
+
         // Delete button event
         deleteBtn.addEventListener('click', (e) => {
             e.stopPropagation();
