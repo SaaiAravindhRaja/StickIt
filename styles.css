@@ -237,7 +237,18 @@ body {
     width: 0;
     height: 0;
     border-left: 8px solid transparent;
-    border-bottom: 8px solid rgba(0, 0, 0, 0.3);
+    border-bottom: 8px solid rgba(0, 0, 0, 0.4);
+}
+
+.resize-handle::before {
+    content: '';
+    position: absolute;
+    bottom: 6px;
+    right: 6px;
+    width: 0;
+    height: 0;
+    border-left: 4px solid transparent;
+    border-bottom: 4px solid rgba(0, 0, 0, 0.2);
 }
 
 .note:hover .resize-handle {
