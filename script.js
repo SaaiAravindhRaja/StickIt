@@ -125,6 +125,19 @@ class NoteManager {
         return this.notes.find(n => n.id === id) || null;
     }
 
+    searchNotes(query) {
+        if (!query || !query.trim()) {
+            return this.getAllNotes();
+        }
+        
+        const searchTerm = query.toLowerCase().trim();
+        return this.notes.filter(note => {
+            const titleMatch = note.title.toLowerCase().includes(searchTerm);
+            const contentMatch = note.content.toLowerCase().includes(searchTerm);
+            return titleMatch || contentMatch;
+        });
+    }
+
     loadAllNotes() {
         this.notes = StorageManager.loadNotes();
         // Update nextZIndex to be higher than any existing note
