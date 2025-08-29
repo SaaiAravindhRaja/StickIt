@@ -358,14 +358,17 @@ class UIController {
 
         noteElement.innerHTML = `
             <div class="note-header">
-                <input class="note-title" value="${this.escapeHtml(note.title)}" readonly>
+                <input class="note-title" value="${this.escapeHtml(note.title)}" readonly 
+                       aria-label="Note title" placeholder="Note title">
                 <div class="note-controls">
-                    <button class="color-btn" title="Change Color" style="background: ${note.color}"></button>
-                    <button class="delete-btn" title="Delete Note">×</button>
+                    <button class="color-btn" title="Change Color" aria-label="Change note color" 
+                            style="background: ${note.color}"></button>
+                    <button class="delete-btn" title="Delete Note" aria-label="Delete note">×</button>
                 </div>
             </div>
-            <textarea class="note-content" readonly>${this.escapeHtml(note.content)}</textarea>
-            <div class="resize-handle"></div>
+            <textarea class="note-content" readonly aria-label="Note content" 
+                      placeholder="Write your note here...">${this.escapeHtml(note.content)}</textarea>
+            <div class="resize-handle" aria-label="Resize note" title="Drag to resize"></div>
         `;
 
         // Add event listeners for this note
