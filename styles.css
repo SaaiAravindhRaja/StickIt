@@ -417,6 +417,16 @@ body {
         height: 25px;
         font-size: 0.8rem;
     }
+    
+    .color-picker {
+        width: 140px;
+        padding: 0.7rem;
+    }
+    
+    .color-option {
+        width: 28px;
+        height: 28px;
+    }
 }
 
 /* High contrast mode support */
