@@ -425,7 +425,7 @@ class UIController {
             if (titleInput.readOnly) {
                 e.preventDefault();
                 e.stopPropagation();
-                this.enterEditMode(noteElement, note);
+                this.enterEditMode(noteElement, note, 'title');
             }
         });
 
@@ -435,7 +435,7 @@ class UIController {
                 e.preventDefault();
                 e.stopPropagation();
                 console.log('Entering edit mode for content');
-                this.enterEditMode(noteElement, note);
+                this.enterEditMode(noteElement, note, 'content');
             }
         });
 
