@@ -146,6 +146,192 @@ class NoteManager {
     }
 }
 
+// Search Manager - handles search functionality
+class SearchManager {
+    constructor(noteManager, uiController) {
+        this.noteManager = noteManager;
+        this.uiController = uiController;
+        this.currentQuery = '';
+        this.searchResults = [];
+        this.isSearchActive = false;
+        this.searchTimeout = null;
+    }
+
+    searchNotes(query) {
+        // Clear previous timeout to debounce search
+        if (this.searchTimeout) {
+            clearTimeout(this.searchTimeout);
+        }
+
+        this.searchTimeout = setTimeout(() => {
+            this.performSearch(query);
+        }, 300); // 300ms debounce
+    }
+
+    performSearch(query) {
+        this.currentQuery = query.toLowerCase().trim();
+        
+        if (!this.currentQuery) {
+            this.clearSearch();
+            return [];
+        }
+
+        this.searchResults = this.noteManager.searchNotes(this.currentQuery);
+        this.displaySearchResults();
+        return this.searchResults;
+    }
+
+    displaySearchResults() {
+        this.isSearchActive = true;
+        const allNotes = this.noteManager.getAllNotes();
+        
+        // Hide non-matching notes and highlight matching ones
+        allNotes.forEach(note => {
+            const noteElement = document.querySelector(`[data-note-id="${note.id}"]`);
+            if (!noteElement) return;
+
+            const isMatch = this.searchResults.some(result => result.id === note.id);
+            
+            if (isMatch) {
+                noteElement.classList.remove('hidden');
+                noteElement.classList.add('search-match');
+                this.highlightSearchTerms(noteElement, note);
+            } else {
+                noteElement.classList.add('hidden');
+                noteElement.classList.remove('search-match');
+            }
+        });
+
+        // Show search stats
+        this.showSearchStats();
+        
+        // Show no results message if needed
+        if (this.searchResults.length === 0) {
+            this.showNoResultsMessage();
+        } else {
+            this.hideNoResultsMessage();
+        }
+
+        // Add search-active class to body for styling
+        document.body.classList.add('search-active');
+    }
+
+    highlightSearchTerms(noteElement, note) {
+        const titleElement = noteElement.querySelector('.note-title');
+        const contentElement = noteElement.querySelector('.note-content');
+
+        // Store original values if not already stored
+        if (!titleElement.dataset.originalValue) {
+            titleElement.dataset.originalValue = note.title;
+        }
+        if (!contentElement.dataset.originalValue) {
+            contentElement.dataset.originalValue = note.content;
+        }
+
+        // Highlight in title
+        if (note.title.toLowerCase().includes(this.currentQuery)) {
+            titleElement.value = note.title; // Keep original value for input
+            // We'll use CSS animation instead of HTML highlighting for input fields
+        }
+
+        // Highlight in content
+        if (note.content.toLowerCase().includes(this.currentQuery)) {
+            contentElement.value = note.content; // Keep original value for textarea
+            // We'll use CSS animation instead of HTML highlighting for textarea
+        }
+
+        // Add highlight animation
+        noteElement.classList.add('search-highlight');
+        setTimeout(() => {
+            noteElement.classList.remove('search-highlight');
+        }, 1000);
+    }
+
+    clearSearch() {
+        this.currentQuery = '';
+        this.searchResults = [];
+        this.isSearchActive = false;
+
+        // Clear any pending search timeout
+        if (this.searchTimeout) {
+            clearTimeout(this.searchTimeout);
+            this.searchTimeout = null;
+        }
+
+        // Show all notes and remove search styling
+        const allNotes = this.noteManager.getAllNotes();
+        allNotes.forEach(note => {
+            const noteElement = document.querySelector(`[data-note-id="${note.id}"]`);
+            if (!noteElement) return;
+
+            noteElement.classList.remove('hidden', 'search-match', 'search-highlight');
+            
+            // Restore original values
+            const titleElement = noteElement.querySelector('.note-title');
+            const contentElement = noteElement.querySelector('.note-content');
+            
+            if (titleElement.dataset.originalValue) {
+                titleElement.value = titleElement.dataset.originalValue;
+                delete titleElement.dataset.originalValue;
+            }
+            if (contentElement.dataset.originalValue) {
+                contentElement.value = contentElement.dataset.originalValue;
+                delete contentElement.dataset.originalValue;
+            }
+        });
+
+        // Hide search UI elements
+        this.hideSearchStats();
+        this.hideNoResultsMessage();
+        document.body.classList.remove('search-active');
+    }
+
+    showSearchStats() {
+        let statsElement = document.querySelector('.search-stats');
+        if (!statsElement) {
+            statsElement = document.createElement('div');
+            statsElement.className = 'search-stats';
+            this.uiController.notesBoard.appendChild(statsElement);
+        }
+
+        const totalNotes = this.noteManager.getAllNotes().length;
+        const matchCount = this.searchResults.length;
+        
+        statsElement.textContent = `${matchCount} of ${totalNotes} notes`;
+        statsElement.classList.add('visible');
+    }
+
+    hideSearchStats() {
+        const statsElement = document.querySelector('.search-stats');
+        if (statsElement) {
+            statsElement.classList.remove('visible');
+        }
+    }
+
+    showNoResultsMessage() {
+        let messageElement = document.querySelector('.no-results-message');
+        if (!messageElement) {
+            messageElement = document.createElement('div');
+            messageElement.className = 'no-results-message';
+            this.uiController.notesBoard.appendChild(messageElement);
+        }
+
+        messageElement.innerHTML = `
+            <div>
+                <h3>No notes found</h3>
+                <p>Try searching with different keywords</p>
+            </div>
+        `;
+    }
+
+    hideNoResultsMessage() {
+        const messageElement = document.querySelector('.no-results-message');
+        if (messageElement) {
+            messageElement.remove();
+        }
+    }
+}
+
 // UI Controller - manages DOM manipulation and rendering
 class UIController {
     constructor(noteManager) {
