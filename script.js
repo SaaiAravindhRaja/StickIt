@@ -155,7 +155,7 @@ class UIController {
             <div class="note-header">
                 <input class="note-title" value="${this.escapeHtml(note.title)}" readonly>
                 <div class="note-controls">
-                    <button class="color-btn" title="Change Color"></button>
+                    <button class="color-btn" title="Change Color" style="background: ${note.color}"></button>
                     <button class="delete-btn" title="Delete Note">×</button>
                 </div>
             </div>
