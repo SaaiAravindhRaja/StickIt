@@ -564,8 +564,29 @@ class UIController {
         const noteRect = noteElement.getBoundingClientRect();
         const boardRect = this.notesBoard.getBoundingClientRect();
         
-        colorPicker.style.left = (noteRect.left - boardRect.left + noteRect.width + 10) + 'px';
-        colorPicker.style.top = (noteRect.top - boardRect.top) + 'px';
+        let pickerX = noteRect.left - boardRect.left + noteRect.width + 10;
+        let pickerY = noteRect.top - boardRect.top;
+        
+        // Ensure color picker stays within viewport
+        const pickerWidth = 120; // Width defined in CSS
+        const pickerHeight = 80; // Approximate height
+        
+        if (pickerX + pickerWidth > boardRect.width) {
+            // Position to the left of the note instead
+            pickerX = noteRect.left - boardRect.left - pickerWidth - 10;
+        }
+        
+        if (pickerY + pickerHeight > boardRect.height) {
+            // Position above the note instead
+            pickerY = noteRect.bottom - boardRect.top - pickerHeight;
+        }
+        
+        // Ensure minimum positioning
+        pickerX = Math.max(10, pickerX);
+        pickerY = Math.max(10, pickerY);
+        
+        colorPicker.style.left = pickerX + 'px';
+        colorPicker.style.top = pickerY + 'px';
 
         // Add to notes board
         this.notesBoard.appendChild(colorPicker);
