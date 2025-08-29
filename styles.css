@@ -173,9 +173,8 @@ body {
 }
 
 .color-btn {
-    background: linear-gradient(45deg, #ff6b6b, #4ecdc4, #45b7d1, #96ceb4, #feca57, #ff9ff3);
-    background-size: 300% 300%;
-    animation: colorShift 3s ease-in-out infinite;
+    background: #ffeb3b; /* Default color, will be overridden by inline style */
+    border: 1px solid rgba(0, 0, 0, 0.1);
 }
 
 .color-btn:hover {
@@ -193,10 +192,7 @@ body {
     transform: scale(1.2);
 }
 
-@keyframes colorShift {
-    0%, 100% { background-position: 0% 50%; }
-    50% { background-position: 100% 50%; }
-}
+
 
 /* Note content */
 .note-content {
@@ -474,7 +470,5 @@ body {
         animation: none;
     }
     
-    @keyframes colorShift {
-        0%, 100% { background-position: 0% 50%; }
-    }
+
 }
