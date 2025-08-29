@@ -504,18 +504,63 @@ body {
 /* High contrast mode support */
 @media (prefers-contrast: high) {
     .note {
-        border: 2px solid #000;
+        border: 3px solid #000;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
     }
     
     .note-title,
     .note-content {
         color: #000;
+        background: rgba(255, 255, 255, 0.9);
     }
     
     .delete-btn {
         background: #000;
         color: #fff;
+        border: 2px solid #fff;
     }
+    
+    .color-btn {
+        border: 2px solid #000;
+    }
+    
+    .search-box {
+        border: 2px solid #000;
+        background: #fff;
+        color: #000;
+    }
+    
+    .add-note-btn {
+        border: 2px solid #000;
+    }
+}
+
+/* Focus styles for accessibility */
+.note:focus-within {
+    outline: 3px solid #667eea;
+    outline-offset: 2px;
+}
+
+.note-title:focus,
+.note-content:focus {
+    outline: 2px solid #667eea;
+    outline-offset: 1px;
+    background: rgba(255, 255, 255, 0.95);
+}
+
+.color-btn:focus,
+.delete-btn:focus {
+    outline: 2px solid #667eea;
+    outline-offset: 2px;
+}
+
+.search-box:focus {
+    outline: none; /* Custom focus style already applied */
+}
+
+.add-note-btn:focus {
+    outline: 3px solid rgba(102, 126, 234, 0.5);
+    outline-offset: 2px;
 }
 
 /* Search functionality styles */
