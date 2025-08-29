@@ -721,8 +721,8 @@ class UIController {
         noteElement.addEventListener('touchend', handleTouchEnd, { passive: false });
     }
 
-    enterEditMode(noteElement, note) {
-        console.log('Entering edit mode for note:', note.id);
+    enterEditMode(noteElement, note, focusTarget = 'title') {
+        console.log('Entering edit mode for note:', note.id, 'focusing on:', focusTarget);
         // Store original values for potential cancellation
         noteElement.dataset.originalTitle = note.title;
         noteElement.dataset.originalContent = note.content;
@@ -741,9 +741,14 @@ class UIController {
         
         console.log('After: titleInput.readOnly =', titleInput.readOnly, 'contentTextarea.readOnly =', contentTextarea.readOnly);
         
-        // Focus on title and select all text
-        titleInput.focus();
-        titleInput.select();
+        // Focus on the appropriate field
+        if (focusTarget === 'content') {
+            contentTextarea.focus();
+            contentTextarea.select();
+        } else {
+            titleInput.focus();
+            titleInput.select();
+        }
         
         // Add click outside listener to exit edit mode
         setTimeout(() => {
