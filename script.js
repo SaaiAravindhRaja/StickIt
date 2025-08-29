@@ -430,9 +430,11 @@ class UIController {
         });
 
         contentTextarea.addEventListener('click', (e) => {
+            console.log('Content textarea clicked, readOnly:', contentTextarea.readOnly);
             if (contentTextarea.readOnly) {
                 e.preventDefault();
                 e.stopPropagation();
+                console.log('Entering edit mode for content');
                 this.enterEditMode(noteElement, note);
             }
         });
