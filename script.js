@@ -286,13 +286,13 @@ class UIController {
         let startPosition = { x: 0, y: 0 };
 
         const handleMouseDown = (e) => {
-            // Don't start drag if clicking on input elements or buttons
-            if (e.target.matches('input, textarea, button')) {
+            // Don't start drag if clicking on input elements, buttons, or resize handle
+            if (e.target.matches('input, textarea, button, .resize-handle')) {
                 return;
             }
             
-            // Don't start drag if note is in edit mode
-            if (noteElement.classList.contains('editing')) {
+            // Don't start drag if note is in edit mode or being resized
+            if (noteElement.classList.contains('editing') || noteElement.classList.contains('resizing')) {
                 return;
             }
 
