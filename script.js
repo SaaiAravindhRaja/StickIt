@@ -163,9 +163,15 @@ class SearchManager {
             clearTimeout(this.searchTimeout);
         }
 
+        // Immediate search for empty query to clear results quickly
+        if (!query || !query.trim()) {
+            this.clearSearch();
+            return [];
+        }
+
         this.searchTimeout = setTimeout(() => {
             this.performSearch(query);
-        }, 300); // 300ms debounce
+        }, 200); // 200ms debounce for better responsiveness
     }
 
     performSearch(query) {
@@ -467,15 +473,39 @@ class UIController {
     }
 
     deleteNoteWithConfirmation(noteId) {
-        if (confirm('Are you sure you want to delete this note?')) {
-            const noteElement = document.querySelector(`[data-note-id="${noteId}"]`);
-            if (noteElement) {
-                noteElement.classList.add('disappearing');
-                setTimeout(() => {
-                    this.noteManager.deleteNote(noteId);
-                    noteElement.remove();
-                }, 300);
+        const noteElement = document.querySelector(`[data-note-id="${noteId}"]`);
+        if (!noteElement) return;
+
+        // Create custom confirmation dialog for better UX
+        const note = this.noteManager.getNote(noteId);
+        const title = note ? (note.title || 'Untitled') : 'this note';
+        
+        if (confirm(`Delete "${title}"?\n\nThis action cannot be undone.`)) {
+            noteElement.classList.add('disappearing');
+            
+            // Provide haptic feedback on mobile
+            if (navigator.vibrate) {
+                navigator.vibrate(100);
             }
+            
+            setTimeout(() => {
+                const success = this.noteManager.deleteNote(noteId);
+                if (success) {
+                    noteElement.remove();
+                    
+                    // Update search results if search is active
+                    if (window.stickItApp && window.stickItApp.searchManager.isSearchActive) {
+                        const searchBox = document.querySelector('.search-box');
+                        if (searchBox && searchBox.value) {
+                            window.stickItApp.searchManager.performSearch(searchBox.value);
+                        }
+                    }
+                } else {
+                    // If deletion failed, remove the disappearing class
+                    noteElement.classList.remove('disappearing');
+                    console.error('Failed to delete note');
+                }
+            }, 300);
         }
     }
 
@@ -645,14 +675,14 @@ class UIController {
             if (!isDragging && !isLongPress && touchDuration < 300) {
                 // Check for double tap
                 const now = Date.now();
-                const lastTap = noteElement.dataset.lastTap || 0;
+                const lastTap = parseInt(noteElement.dataset.lastTap || '0');
                 const timeBetweenTaps = now - lastTap;
                 
                 if (timeBetweenTaps < 500 && timeBetweenTaps > 50) {
                     // Double tap detected - enter edit mode
                     this.enterEditMode(noteElement, note);
                 } else {
-                    noteElement.dataset.lastTap = now;
+                    noteElement.dataset.lastTap = now.toString();
                 }
             }
 
@@ -1009,7 +1039,10 @@ class StickItApp {
         // Set up event listeners
         this.setupEventListeners();
         
-        console.log('StickIt application initialized');
+        // Set up keyboard shortcuts
+        this.setupKeyboardShortcuts();
+        
+        console.log('StickIt application initialized with enhanced features');
     }
 
     setupEventListeners() {
@@ -1077,8 +1110,116 @@ class StickItApp {
                 titleInput.readOnly = false;
                 titleInput.focus();
                 titleInput.select();
+                
+                // Add a subtle shake animation to draw attention
+                noteElement.classList.add('shake');
+                setTimeout(() => {
+                    noteElement.classList.remove('shake');
+                }, 500);
             }
         }, 100);
+    }
+
+    enhanceSearchBox(searchBox) {
+        // Create search container wrapper
+        const searchContainer = document.createElement('div');
+        searchContainer.className = 'search-container';
+        searchContainer.style.position = 'relative';
+        searchContainer.style.display = 'flex';
+        searchContainer.style.alignItems = 'center';
+        
+        // Wrap the search box
+        searchBox.parentNode.insertBefore(searchContainer, searchBox);
+        searchContainer.appendChild(searchBox);
+        
+        // Add clear button
+        const clearButton = document.createElement('button');
+        clearButton.innerHTML = '×';
+        clearButton.className = 'search-clear-btn';
+        clearButton.style.cssText = `
+            position: absolute;
+            right: 10px;
+            background: none;
+            border: none;
+            font-size: 1.2rem;
+            color: #999;
+            cursor: pointer;
+            opacity: 0;
+            transition: opacity 0.2s ease;
+            width: 20px;
+            height: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+        `;
+        
+        clearButton.addEventListener('click', () => {
+            searchBox.value = '';
+            this.searchManager.clearSearch();
+            searchBox.focus();
+        });
+        
+        clearButton.addEventListener('mouseenter', () => {
+            clearButton.style.backgroundColor = '#f0f0f0';
+        });
+        
+        clearButton.addEventListener('mouseleave', () => {
+            clearButton.style.backgroundColor = 'transparent';
+        });
+        
+        searchContainer.appendChild(clearButton);
+        
+        // Show/hide clear button based on input
+        searchBox.addEventListener('input', () => {
+            clearButton.style.opacity = searchBox.value ? '1' : '0';
+        });
+        
+        // Add search icon
+        const searchIcon = document.createElement('span');
+        searchIcon.innerHTML = '🔍';
+        searchIcon.style.cssText = `
+            position: absolute;
+            left: 10px;
+            color: #999;
+            pointer-events: none;
+            font-size: 0.9rem;
+        `;
+        searchContainer.appendChild(searchIcon);
+        
+        // Adjust search box padding to accommodate icons
+        searchBox.style.paddingLeft = '35px';
+        searchBox.style.paddingRight = '35px';
+    }
+
+    // Add keyboard shortcuts
+    setupKeyboardShortcuts() {
+        document.addEventListener('keydown', (e) => {
+            // Ctrl/Cmd + F to focus search
+            if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
+                e.preventDefault();
+                const searchBox = document.querySelector('.search-box');
+                if (searchBox) {
+                    searchBox.focus();
+                    searchBox.select();
+                }
+            }
+            
+            // Ctrl/Cmd + N to create new note
+            if ((e.ctrlKey || e.metaKey) && e.key === 'n') {
+                e.preventDefault();
+                this.createNewNote();
+            }
+            
+            // Escape to clear search
+            if (e.key === 'Escape' && this.searchManager.isSearchActive) {
+                const searchBox = document.querySelector('.search-box');
+                if (searchBox && document.activeElement !== searchBox) {
+                    searchBox.value = '';
+                    this.searchManager.clearSearch();
+                }
+            }
+        });
     }
 }
 
