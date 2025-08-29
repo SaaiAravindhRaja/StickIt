@@ -722,6 +722,7 @@ class UIController {
     }
 
     enterEditMode(noteElement, note) {
+        console.log('Entering edit mode for note:', note.id);
         // Store original values for potential cancellation
         noteElement.dataset.originalTitle = note.title;
         noteElement.dataset.originalContent = note.content;
@@ -733,8 +734,12 @@ class UIController {
         const titleInput = noteElement.querySelector('.note-title');
         const contentTextarea = noteElement.querySelector('.note-content');
         
+        console.log('Before: titleInput.readOnly =', titleInput.readOnly, 'contentTextarea.readOnly =', contentTextarea.readOnly);
+        
         titleInput.readOnly = false;
         contentTextarea.readOnly = false;
+        
+        console.log('After: titleInput.readOnly =', titleInput.readOnly, 'contentTextarea.readOnly =', contentTextarea.readOnly);
         
         // Focus on title and select all text
         titleInput.focus();
