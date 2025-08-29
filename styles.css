@@ -438,25 +438,66 @@ body {
     
     .resize-handle {
         opacity: 1;
-        width: 25px;
-        height: 25px;
+        width: 30px;
+        height: 30px;
+    }
+    
+    .resize-handle::after {
+        border-left: 10px solid transparent;
+        border-bottom: 10px solid rgba(0, 0, 0, 0.4);
+    }
+    
+    .resize-handle::before {
+        border-left: 6px solid transparent;
+        border-bottom: 6px solid rgba(0, 0, 0, 0.2);
     }
     
     .color-btn,
     .delete-btn {
-        width: 25px;
-        height: 25px;
-        font-size: 0.8rem;
+        width: 28px;
+        height: 28px;
+        font-size: 0.9rem;
     }
     
     .color-picker {
-        width: 140px;
-        padding: 0.7rem;
+        width: 160px;
+        padding: 0.8rem;
     }
     
     .color-option {
-        width: 28px;
-        height: 28px;
+        width: 32px;
+        height: 32px;
+    }
+    
+    /* Improve touch targets */
+    .note-title,
+    .note-content {
+        font-size: 16px; /* Prevent zoom on iOS */
+    }
+    
+    /* Add visual feedback for touch */
+    .note:active {
+        transform: scale(0.98);
+    }
+    
+    .add-note-btn:active {
+        transform: translateY(0) scale(0.95);
+    }
+}
+
+/* Landscape mobile optimizations */
+@media (max-width: 768px) and (orientation: landscape) {
+    .app-header {
+        padding: 0.5rem 1rem;
+    }
+    
+    .app-header h1 {
+        font-size: 1.4rem;
+    }
+    
+    .note {
+        min-width: 140px;
+        min-height: 90px;
     }
 }
 
