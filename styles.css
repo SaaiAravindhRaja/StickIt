@@ -453,7 +453,8 @@ body {
     .color-btn,
     .delete-btn,
     .resize-handle,
-    .note-controls {
+    .note-controls,
+    .color-option {
         transition: none;
     }
     
