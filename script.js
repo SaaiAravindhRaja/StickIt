@@ -1,0 +1,585 @@
+// StickIt - Virtual Sticky Notes Board Application
+
+// Note Model and Storage Manager
+class Note {
+    constructor(x = 100, y = 100, title = 'New Note', content = '') {
+        this.id = 'note-' + Date.now() + '-' + Math.random().toString(36).substring(2, 11);
+        this.title = title;
+        this.content = content;
+        this.x = x;
+        this.y = y;
+        this.width = 200;
+        this.height = 150;
+        this.color = '#ffeb3b';
+        this.zIndex = 1;
+        this.created = new Date();
+        this.modified = new Date();
+    }
+}
+
+class StorageManager {
+    static STORAGE_KEY = 'stickit-notes';
+
+    static saveNotes(notes) {
+        try {
+            localStorage.setItem(this.STORAGE_KEY, JSON.stringify(notes));
+        } catch (error) {
+            console.error('Failed to save notes to localStorage:', error);
+            // Handle storage quota exceeded or other errors
+            if (error.name === 'QuotaExceededError') {
+                alert('Storage quota exceeded. Please delete some notes to continue.');
+            }
+        }
+    }
+
+    static loadNotes() {
+        try {
+            const notesData = localStorage.getItem(this.STORAGE_KEY);
+            if (!notesData) return [];
+            
+            const parsedNotes = JSON.parse(notesData);
+            // Convert plain objects back to Note instances with proper dates
+            return parsedNotes.map(noteData => {
+                const note = Object.assign(new Note(), noteData);
+                note.created = new Date(noteData.created);
+                note.modified = new Date(noteData.modified);
+                return note;
+            });
+        } catch (error) {
+            console.error('Failed to load notes from localStorage:', error);
+            // Clear corrupted data
+            localStorage.removeItem(this.STORAGE_KEY);
+            return [];
+        }
+    }
+
+    static saveNote(note) {
+        const notes = this.loadNotes();
+        const existingIndex = notes.findIndex(n => n.id === note.id);
+        
+        if (existingIndex >= 0) {
+            notes[existingIndex] = note;
+        } else {
+            notes.push(note);
+        }
+        
+        this.saveNotes(notes);
+    }
+
+    static deleteNote(id) {
+        const notes = this.loadNotes();
+        const filteredNotes = notes.filter(note => note.id !== id);
+        this.saveNotes(filteredNotes);
+    }
+}
+
+// Note Manager - handles CRUD operations
+class NoteManager {
+    constructor() {
+        this.notes = [];
+        this.nextZIndex = 1;
+    }
+
+    createNote(x = 100, y = 100) {
+        // Ensure note is positioned within viewport
+        const maxX = window.innerWidth - 200;
+        const maxY = window.innerHeight - 150;
+        
+        x = Math.max(50, Math.min(x, maxX));
+        y = Math.max(100, Math.min(y, maxY)); // Account for header height
+        
+        const note = new Note(x, y);
+        note.zIndex = this.nextZIndex++;
+        
+        this.notes.push(note);
+        StorageManager.saveNote(note);
+        
+        return note;
+    }
+
+    updateNote(id, updates) {
+        const note = this.notes.find(n => n.id === id);
+        if (!note) return false;
+        
+        Object.assign(note, updates);
+        note.modified = new Date();
+        
+        StorageManager.saveNote(note);
+        return true;
+    }
+
+    deleteNote(id) {
+        const index = this.notes.findIndex(n => n.id === id);
+        if (index === -1) return false;
+        
+        this.notes.splice(index, 1);
+        StorageManager.deleteNote(id);
+        return true;
+    }
+
+    getAllNotes() {
+        return [...this.notes];
+    }
+
+    getNote(id) {
+        return this.notes.find(n => n.id === id) || null;
+    }
+
+    loadAllNotes() {
+        this.notes = StorageManager.loadNotes();
+        // Update nextZIndex to be higher than any existing note
+        this.nextZIndex = Math.max(1, ...this.notes.map(n => n.zIndex)) + 1;
+        return this.notes;
+    }
+}
+
+// UI Controller - manages DOM manipulation and rendering
+class UIController {
+    constructor(noteManager) {
+        this.noteManager = noteManager;
+        this.notesBoard = document.getElementById('notesBoard');
+    }
+
+    renderNote(note) {
+        const noteElement = document.createElement('div');
+        noteElement.className = 'note appearing';
+        noteElement.dataset.noteId = note.id;
+        noteElement.style.left = note.x + 'px';
+        noteElement.style.top = note.y + 'px';
+        noteElement.style.width = note.width + 'px';
+        noteElement.style.height = note.height + 'px';
+        noteElement.style.backgroundColor = note.color;
+        noteElement.style.zIndex = note.zIndex;
+
+        noteElement.innerHTML = `
+            <div class="note-header">
+                <input class="note-title" value="${this.escapeHtml(note.title)}" readonly>
+                <div class="note-controls">
+                    <button class="color-btn" title="Change Color"></button>
+                    <button class="delete-btn" title="Delete Note">×</button>
+                </div>
+            </div>
+            <textarea class="note-content" readonly>${this.escapeHtml(note.content)}</textarea>
+            <div class="resize-handle"></div>
+        `;
+
+        // Add event listeners for this note
+        this.attachNoteEventListeners(noteElement, note);
+
+        return noteElement;
+    }
+
+    attachNoteEventListeners(noteElement, note) {
+        const titleInput = noteElement.querySelector('.note-title');
+        const contentTextarea = noteElement.querySelector('.note-content');
+        const deleteBtn = noteElement.querySelector('.delete-btn');
+
+        // Title input events
+        titleInput.addEventListener('blur', () => {
+            this.exitEditMode(noteElement, note);
+        });
+
+        titleInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                contentTextarea.focus();
+            } else if (e.key === 'Escape') {
+                e.preventDefault();
+                this.cancelEditMode(noteElement, note);
+            }
+        });
+
+        // Content textarea events
+        contentTextarea.addEventListener('blur', () => {
+            this.exitEditMode(noteElement, note);
+        });
+
+        contentTextarea.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                e.preventDefault();
+                this.cancelEditMode(noteElement, note);
+            }
+        });
+
+        // Double-click to enter edit mode
+        noteElement.addEventListener('dblclick', (e) => {
+            // Don't trigger edit mode if double-clicking on controls
+            if (e.target.matches('.delete-btn, .color-btn')) {
+                return;
+            }
+            e.stopPropagation();
+            this.enterEditMode(noteElement, note);
+        });
+
+        // Delete button event
+        deleteBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            this.deleteNoteWithConfirmation(note.id);
+        });
+
+        // Drag and drop functionality
+        this.attachDragEventListeners(noteElement, note);
+    }
+
+    renderAllNotes() {
+        // Clear existing notes
+        this.notesBoard.innerHTML = '';
+        
+        // Render all notes
+        const notes = this.noteManager.getAllNotes();
+        notes.forEach(note => {
+            const noteElement = this.renderNote(note);
+            this.notesBoard.appendChild(noteElement);
+        });
+    }
+
+    addNoteToDOM(note) {
+        const noteElement = this.renderNote(note);
+        this.notesBoard.appendChild(noteElement);
+        
+        // Remove appearing animation class after animation completes
+        setTimeout(() => {
+            noteElement.classList.remove('appearing');
+        }, 300);
+    }
+
+    updateNotePosition(id, x, y) {
+        const noteElement = document.querySelector(`[data-note-id="${id}"]`);
+        if (noteElement) {
+            noteElement.style.left = x + 'px';
+            noteElement.style.top = y + 'px';
+        }
+    }
+
+    deleteNoteWithConfirmation(noteId) {
+        if (confirm('Are you sure you want to delete this note?')) {
+            const noteElement = document.querySelector(`[data-note-id="${noteId}"]`);
+            if (noteElement) {
+                noteElement.classList.add('disappearing');
+                setTimeout(() => {
+                    this.noteManager.deleteNote(noteId);
+                    noteElement.remove();
+                }, 300);
+            }
+        }
+    }
+
+    attachDragEventListeners(noteElement, note) {
+        let isDragging = false;
+        let dragOffset = { x: 0, y: 0 };
+        let startPosition = { x: 0, y: 0 };
+
+        const handleMouseDown = (e) => {
+            // Don't start drag if clicking on input elements or buttons
+            if (e.target.matches('input, textarea, button')) {
+                return;
+            }
+            
+            // Don't start drag if note is in edit mode
+            if (noteElement.classList.contains('editing')) {
+                return;
+            }
+
+            isDragging = true;
+            startPosition = { x: note.x, y: note.y };
+            
+            // Calculate offset from mouse position to note's top-left corner
+            const rect = noteElement.getBoundingClientRect();
+            const boardRect = this.notesBoard.getBoundingClientRect();
+            dragOffset.x = e.clientX - rect.left;
+            dragOffset.y = e.clientY - rect.top;
+
+            // Add visual feedback
+            noteElement.classList.add('dragging');
+            
+            // Bring note to front
+            const maxZIndex = Math.max(...this.noteManager.getAllNotes().map(n => n.zIndex));
+            note.zIndex = maxZIndex + 1;
+            noteElement.style.zIndex = note.zIndex;
+
+            // Prevent text selection during drag
+            e.preventDefault();
+            
+            // Add global mouse event listeners
+            document.addEventListener('mousemove', handleMouseMove);
+            document.addEventListener('mouseup', handleMouseUp);
+        };
+
+        const handleMouseMove = (e) => {
+            if (!isDragging) return;
+
+            // Calculate new position relative to the notes board
+            const boardRect = this.notesBoard.getBoundingClientRect();
+            let newX = e.clientX - boardRect.left - dragOffset.x;
+            let newY = e.clientY - boardRect.top - dragOffset.y;
+
+            // Constrain note within viewport boundaries
+            const noteWidth = noteElement.offsetWidth;
+            const noteHeight = noteElement.offsetHeight;
+            const boardWidth = this.notesBoard.offsetWidth;
+            const boardHeight = this.notesBoard.offsetHeight;
+
+            newX = Math.max(0, Math.min(newX, boardWidth - noteWidth));
+            newY = Math.max(0, Math.min(newY, boardHeight - noteHeight));
+
+            // Update note position
+            noteElement.style.left = newX + 'px';
+            noteElement.style.top = newY + 'px';
+
+            // Update note object (but don't save to storage yet for performance)
+            note.x = newX;
+            note.y = newY;
+        };
+
+        const handleMouseUp = (e) => {
+            if (!isDragging) return;
+
+            isDragging = false;
+            
+            // Remove visual feedback
+            noteElement.classList.remove('dragging');
+
+            // Save final position to localStorage
+            this.noteManager.updateNote(note.id, { 
+                x: note.x, 
+                y: note.y, 
+                zIndex: note.zIndex 
+            });
+
+            // Remove global event listeners
+            document.removeEventListener('mousemove', handleMouseMove);
+            document.removeEventListener('mouseup', handleMouseUp);
+        };
+
+        // Attach mousedown event to the note element
+        noteElement.addEventListener('mousedown', handleMouseDown);
+
+        // Touch events for mobile support
+        const handleTouchStart = (e) => {
+            if (e.target.matches('input, textarea, button')) {
+                return;
+            }
+            
+            // Don't start drag if note is in edit mode
+            if (noteElement.classList.contains('editing')) {
+                return;
+            }
+
+            const touch = e.touches[0];
+            const mouseEvent = new MouseEvent('mousedown', {
+                clientX: touch.clientX,
+                clientY: touch.clientY
+            });
+            handleMouseDown(mouseEvent);
+            e.preventDefault();
+        };
+
+        const handleTouchMove = (e) => {
+            if (!isDragging) return;
+            
+            const touch = e.touches[0];
+            const mouseEvent = new MouseEvent('mousemove', {
+                clientX: touch.clientX,
+                clientY: touch.clientY
+            });
+            handleMouseMove(mouseEvent);
+            e.preventDefault();
+        };
+
+        const handleTouchEnd = (e) => {
+            if (!isDragging) return;
+            
+            const mouseEvent = new MouseEvent('mouseup', {});
+            handleMouseUp(mouseEvent);
+            e.preventDefault();
+        };
+
+        // Attach touch events for mobile devices
+        noteElement.addEventListener('touchstart', handleTouchStart, { passive: false });
+        noteElement.addEventListener('touchmove', handleTouchMove, { passive: false });
+        noteElement.addEventListener('touchend', handleTouchEnd, { passive: false });
+    }
+
+    enterEditMode(noteElement, note) {
+        // Store original values for potential cancellation
+        noteElement.dataset.originalTitle = note.title;
+        noteElement.dataset.originalContent = note.content;
+        
+        // Add editing class for visual feedback
+        noteElement.classList.add('editing');
+        
+        // Make fields editable
+        const titleInput = noteElement.querySelector('.note-title');
+        const contentTextarea = noteElement.querySelector('.note-content');
+        
+        titleInput.readOnly = false;
+        contentTextarea.readOnly = false;
+        
+        // Focus on title and select all text
+        titleInput.focus();
+        titleInput.select();
+        
+        // Add click outside listener to exit edit mode
+        setTimeout(() => {
+            document.addEventListener('click', this.createClickOutsideHandler(noteElement, note), { once: true });
+        }, 0);
+    }
+
+    exitEditMode(noteElement, note) {
+        // Remove editing class
+        noteElement.classList.remove('editing');
+        
+        // Make fields readonly
+        const titleInput = noteElement.querySelector('.note-title');
+        const contentTextarea = noteElement.querySelector('.note-content');
+        
+        titleInput.readOnly = true;
+        contentTextarea.readOnly = true;
+        
+        // Save changes if any
+        const newTitle = titleInput.value.trim() || 'Untitled';
+        const newContent = contentTextarea.value;
+        
+        let hasChanges = false;
+        if (newTitle !== note.title) {
+            note.title = newTitle;
+            hasChanges = true;
+        }
+        if (newContent !== note.content) {
+            note.content = newContent;
+            hasChanges = true;
+        }
+        
+        if (hasChanges) {
+            this.noteManager.updateNote(note.id, { 
+                title: note.title, 
+                content: note.content 
+            });
+        }
+        
+        // Clean up stored original values
+        delete noteElement.dataset.originalTitle;
+        delete noteElement.dataset.originalContent;
+    }
+
+    cancelEditMode(noteElement, note) {
+        // Remove editing class
+        noteElement.classList.remove('editing');
+        
+        // Restore original values
+        const titleInput = noteElement.querySelector('.note-title');
+        const contentTextarea = noteElement.querySelector('.note-content');
+        
+        titleInput.value = noteElement.dataset.originalTitle || note.title;
+        contentTextarea.value = noteElement.dataset.originalContent || note.content;
+        
+        // Make fields readonly
+        titleInput.readOnly = true;
+        contentTextarea.readOnly = true;
+        
+        // Clean up stored original values
+        delete noteElement.dataset.originalTitle;
+        delete noteElement.dataset.originalContent;
+        
+        // Remove focus
+        titleInput.blur();
+        contentTextarea.blur();
+    }
+
+    createClickOutsideHandler(noteElement, note) {
+        return (e) => {
+            // Check if click is outside the note
+            if (!noteElement.contains(e.target)) {
+                this.exitEditMode(noteElement, note);
+            } else {
+                // If clicked inside, set up another click outside listener
+                setTimeout(() => {
+                    document.addEventListener('click', this.createClickOutsideHandler(noteElement, note), { once: true });
+                }, 0);
+            }
+        };
+    }
+
+    escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+}
+
+// Application initialization
+class StickItApp {
+    constructor() {
+        this.noteManager = new NoteManager();
+        this.uiController = new UIController(this.noteManager);
+        this.init();
+    }
+
+    init() {
+        // Load existing notes from storage
+        this.noteManager.loadAllNotes();
+        this.uiController.renderAllNotes();
+
+        // Set up event listeners
+        this.setupEventListeners();
+        
+        console.log('StickIt application initialized');
+    }
+
+    setupEventListeners() {
+        // Add Note button
+        const addNoteBtn = document.getElementById('addNoteBtn');
+        if (addNoteBtn) {
+            addNoteBtn.addEventListener('click', () => {
+                this.createNewNote();
+            });
+        }
+
+        // Search box (placeholder for future implementation)
+        const searchBox = document.querySelector('.search-box');
+        if (searchBox) {
+            searchBox.addEventListener('input', () => {
+                console.log('Search functionality will be implemented in task 6');
+            });
+        }
+
+        // Notes board click for creating notes at click position
+        this.uiController.notesBoard.addEventListener('dblclick', (e) => {
+            if (e.target === this.uiController.notesBoard) {
+                const rect = this.uiController.notesBoard.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+                this.createNewNote(x, y);
+            }
+        });
+    }
+
+    createNewNote(x, y) {
+        // If no position specified, use a default position with slight offset for multiple notes
+        if (x === undefined || y === undefined) {
+            const existingNotes = this.noteManager.getAllNotes();
+            const offset = existingNotes.length * 20;
+            x = 100 + offset;
+            y = 150 + offset;
+        }
+
+        const note = this.noteManager.createNote(x, y);
+        this.uiController.addNoteToDOM(note);
+        
+        // Focus on the title input of the new note
+        setTimeout(() => {
+            const noteElement = document.querySelector(`[data-note-id="${note.id}"]`);
+            if (noteElement) {
+                const titleInput = noteElement.querySelector('.note-title');
+                titleInput.readOnly = false;
+                titleInput.focus();
+                titleInput.select();
+            }
+        }, 100);
+    }
+}
+
+// Initialize the application when DOM is loaded
+document.addEventListener('DOMContentLoaded', function() {
+    window.stickItApp = new StickItApp();
+});
