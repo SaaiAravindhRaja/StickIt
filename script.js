@@ -516,6 +516,197 @@ class UIController {
         };
     }
 
+    showColorPicker(noteElement, note) {
+        // Remove any existing color picker
+        const existingPicker = document.querySelector('.color-picker');
+        if (existingPicker) {
+            existingPicker.remove();
+        }
+
+        // Create color picker element
+        const colorPicker = document.createElement('div');
+        colorPicker.className = 'color-picker';
+        
+        // Define available colors
+        const colors = [
+            '#ffeb3b', // Yellow (default)
+            '#ff9ff3', // Pink
+            '#45b7d1', // Blue
+            '#96ceb4', // Green
+            '#feca57', // Orange
+            '#a55eea', // Purple
+            '#ff6b6b', // Red
+            '#4ecdc4'  // Teal
+        ];
+
+        // Create color options
+        colors.forEach(color => {
+            const colorOption = document.createElement('div');
+            colorOption.className = 'color-option';
+            colorOption.style.backgroundColor = color;
+            colorOption.title = `Change to ${color}`;
+            
+            // Mark current color as selected
+            if (color === note.color) {
+                colorOption.classList.add('selected');
+            }
+            
+            colorOption.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.changeNoteColor(noteElement, note, color);
+                colorPicker.remove();
+            });
+            
+            colorPicker.appendChild(colorOption);
+        });
+
+        // Position the color picker near the note
+        const noteRect = noteElement.getBoundingClientRect();
+        const boardRect = this.notesBoard.getBoundingClientRect();
+        
+        colorPicker.style.left = (noteRect.left - boardRect.left + noteRect.width + 10) + 'px';
+        colorPicker.style.top = (noteRect.top - boardRect.top) + 'px';
+
+        // Add to notes board
+        this.notesBoard.appendChild(colorPicker);
+
+        // Close picker when clicking outside
+        setTimeout(() => {
+            document.addEventListener('click', () => {
+                colorPicker.remove();
+            }, { once: true });
+        }, 0);
+    }
+
+    changeNoteColor(noteElement, note, color) {
+        // Update note object
+        note.color = color;
+        
+        // Update DOM element
+        noteElement.style.backgroundColor = color;
+        
+        // Save to storage
+        this.noteManager.updateNote(note.id, { color: color });
+    }
+
+    attachResizeEventListeners(noteElement, note) {
+        const resizeHandle = noteElement.querySelector('.resize-handle');
+        let isResizing = false;
+        let startX, startY, startWidth, startHeight;
+
+        const handleMouseDown = (e) => {
+            isResizing = true;
+            startX = e.clientX;
+            startY = e.clientY;
+            startWidth = parseInt(document.defaultView.getComputedStyle(noteElement).width, 10);
+            startHeight = parseInt(document.defaultView.getComputedStyle(noteElement).height, 10);
+            
+            // Prevent text selection and note dragging during resize
+            e.preventDefault();
+            e.stopPropagation();
+            
+            // Add visual feedback
+            noteElement.classList.add('resizing');
+            
+            // Add global mouse event listeners
+            document.addEventListener('mousemove', handleMouseMove);
+            document.addEventListener('mouseup', handleMouseUp);
+        };
+
+        const handleMouseMove = (e) => {
+            if (!isResizing) return;
+            
+            // Calculate new dimensions
+            const deltaX = e.clientX - startX;
+            const deltaY = e.clientY - startY;
+            
+            let newWidth = startWidth + deltaX;
+            let newHeight = startHeight + deltaY;
+            
+            // Enforce minimum size constraints
+            const minWidth = 150;
+            const minHeight = 100;
+            
+            newWidth = Math.max(minWidth, newWidth);
+            newHeight = Math.max(minHeight, newHeight);
+            
+            // Ensure note doesn't go outside viewport
+            const boardRect = this.notesBoard.getBoundingClientRect();
+            const noteRect = noteElement.getBoundingClientRect();
+            const maxWidth = boardRect.width - (noteRect.left - boardRect.left);
+            const maxHeight = boardRect.height - (noteRect.top - boardRect.top);
+            
+            newWidth = Math.min(newWidth, maxWidth);
+            newHeight = Math.min(newHeight, maxHeight);
+            
+            // Apply new dimensions
+            noteElement.style.width = newWidth + 'px';
+            noteElement.style.height = newHeight + 'px';
+            
+            // Update note object (but don't save to storage yet for performance)
+            note.width = newWidth;
+            note.height = newHeight;
+        };
+
+        const handleMouseUp = (e) => {
+            if (!isResizing) return;
+            
+            isResizing = false;
+            
+            // Remove visual feedback
+            noteElement.classList.remove('resizing');
+            
+            // Save final dimensions to localStorage
+            this.noteManager.updateNote(note.id, { 
+                width: note.width, 
+                height: note.height 
+            });
+            
+            // Remove global event listeners
+            document.removeEventListener('mousemove', handleMouseMove);
+            document.removeEventListener('mouseup', handleMouseUp);
+        };
+
+        // Attach mousedown event to resize handle
+        resizeHandle.addEventListener('mousedown', handleMouseDown);
+
+        // Touch events for mobile support
+        const handleTouchStart = (e) => {
+            const touch = e.touches[0];
+            const mouseEvent = new MouseEvent('mousedown', {
+                clientX: touch.clientX,
+                clientY: touch.clientY
+            });
+            handleMouseDown(mouseEvent);
+            e.preventDefault();
+        };
+
+        const handleTouchMove = (e) => {
+            if (!isResizing) return;
+            
+            const touch = e.touches[0];
+            const mouseEvent = new MouseEvent('mousemove', {
+                clientX: touch.clientX,
+                clientY: touch.clientY
+            });
+            handleMouseMove(mouseEvent);
+            e.preventDefault();
+        };
+
+        const handleTouchEnd = (e) => {
+            if (!isResizing) return;
+            
+            const mouseEvent = new MouseEvent('mouseup', {});
+            handleMouseUp(mouseEvent);
+            e.preventDefault();
+        };
+
+        // Attach touch events for mobile devices
+        resizeHandle.addEventListener('touchstart', handleTouchStart, { passive: false });
+        resizeHandle.addEventListener('touchmove', handleTouchMove, { passive: false });
+        resizeHandle.addEventListener('touchend', handleTouchEnd, { passive: false });
+    }
+
     escapeHtml(text) {
         const div = document.createElement('div');
         div.textContent = text;
